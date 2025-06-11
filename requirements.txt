@@ -1,0 +1,35 @@
+# MetaHuman Business Assistant Dependencies
+
+# Core Google ADK
+google-adk[eval]>=1.2.1
+
+# WebSocket support for UE5 communication  
+websockets>=12.0
+
+# Additional MCP servers (install via NPM)
+# npm install -g google-calendar-mcp-server
+# npm install -g gmail-mcp-server
+# npm install -g @notionhq/notion-mcp-server
+
+# Environment management
+python-dotenv>=1.0.0
+
+# Voice & Audio (ElevenLabs Integration)
+aiohttp>=3.9.0
+elevenlabs>=1.0.0
+
+# Google Cloud Platform Integration
+google-cloud-texttospeech>=2.16.0
+google-cloud-speech>=2.24.0
+google-cloud-storage>=2.18.0
+google-cloud-bigquery>=3.13.0
+google-api-python-client>=2.108.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+
+# Optional: Enhanced functionality
+requests>=2.31.0
+asyncio-mqtt>=0.16.1  # For IoT integration
+speechrecognition>=3.10.0  # For voice commands
+pyttsx3>=2.90  # For text-to-speech 

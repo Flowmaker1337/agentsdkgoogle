@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google ADK Business Agent z Gmail - Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .panel {
+                height: 400px;
+            }
+            
+            .chat-messages {
+                height: 250px;
+            }
+            
+            .container {
+                max-width: 100%;
+                margin: 0;
+                border-radius: 10px;
+            }
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-height: 90vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            padding: 30px;
+            min-height: 80vh;
+        }
+        
+        .panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            height: 750px;
+            overflow-y: auto;
+        }
+        
+        .panel h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .chat-messages {
+            height: 550px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: white;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 95%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        
+        .message.user {
+            background: #4285f4;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.agent {
+            background: #f1f3f4;
+            color: #333;
+            border-left: 4px solid #4285f4;
+            font-family: 'Segoe UI', monospace;
+        }
+        
+        .message.system {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            text-align: center;
+            margin: 10px auto;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .message-input:focus {
+            border-color: #4285f4;
+        }
+        
+        .send-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        
+        .send-btn:hover:not(:disabled) {
+            background: #3367d6;
+        }
+        
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .quick-btn {
+            background: white;
+            border: 2px solid #4285f4;
+            color: #4285f4;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .quick-btn:hover {
+            background: #4285f4;
+            color: white;
+        }
+        
+        .info-panel ul {
+            list-style: none;
+        }
+        
+        .info-panel li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-panel li:last-child {
+            border-bottom: none;
+        }
+        
+        .feature-icon {
+            width: 30px;
+            height: 30px;
+            background: #4285f4;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Google ADK Business Agent</h1>
+            <p>Asystent biznesowy z dostępem do Gmail i Google Calendar</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Panel Czatu -->
+            <div class="panel">
+                <h3>💬 Czat z Agentem</h3>
+                
+                <div id="connectionStatus" class="status disconnected">
+                    <div class="status-indicator"></div>
+                    <span>Rozłączony z agentem</span>
+                </div>
+                
+                <div id="chatMessages" class="chat-messages">
+                    <div class="message system">
+                        Kliknij "Połącz" żeby rozpocząć rozmowę z agentem
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="quickMessage('Sprawdź moje najnowsze emaile w Gmail')">📧 Sprawdź Gmail</button>
+                    <button class="quick-btn" onclick="quickMessage('Pokaż moje spotkania na dziś w kalendarzu')">📅 Kalendarz dziś</button>
+                    <button class="quick-btn" onclick="quickMessage('Przeanalizuj i klasyfikuj ostatnie emaile do bazy wiedzy')">🧠 Analiza RAG</button>
+                    <button class="quick-btn" onclick="quickMessage('Wyszukaj w bazie wiedzy informacje o projektach')">📚 Wyszukaj w RAG</button>
+                </div>
+                
+                <div class="input-group">
+                    <input type="text" id="messageInput" class="message-input" 
+                           placeholder="Napisz wiadomość do agenta..." 
+                           onkeypress="handleKeyPress(event)">
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()" disabled>Wyślij</button>
+                </div>
+            </div>
+            
+            <!-- Panel Informacji -->
+            <div class="panel info-panel">
+                <h3>🎯 Funkcje Agenta</h3>
+                
+                <ul>
+                    <li>
+                        <div class="feature-icon">📧</div>
+                        <div>
+                            <strong>Gmail + RAG</strong><br>
+                            <small>Automatyczna klasyfikacja i analiza emaili</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">📅</div>
+                        <div>
+                            <strong>Google Calendar</strong><br>
+                            <small>Zarządzanie spotkaniami i terminami</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">📊</div>
+                        <div>
+                            <strong>Raporty Biznesowe</strong><br>
+                            <small>Analiza danych i generowanie raportów</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">✅</div>
+                        <div>
+                            <strong>Zarządzanie Zadaniami</strong><br>
+                            <small>Organizacja projektów i zadań</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">💰</div>
+                        <div>
+                            <strong>Analiza Finansowa</strong><br>
+                            <small>KPI, budżety, prognozy</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">🧠</div>
+                        <div>
+                            <strong>Vertex AI RAG</strong><br>
+                            <small>Inteligentna baza wiedzy z kontekstem</small>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="feature-icon">🔍</div>
+                        <div>
+                            <strong>Wyszukiwanie</strong><br>
+                            <small>Google Search + baza wiedzy RAG</small>
+                        </div>
+                    </li>
+                </ul>
+                
+                <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 10px; border: 2px solid #4285f4;">
+                    <h4 style="color: #4285f4; margin-bottom: 10px;">🚀 Przykładowe Komendy:</h4>
+                    <ul style="list-style: none; font-size: 14px; line-height: 1.6;">
+                        <li>• "Sprawdź nieprzeczytane emaile"</li>
+                        <li>• "Przeanalizuj tego emaila: [wklej treść]"</li>
+                        <li>• "Wyszukaj w bazie wiedzy projekt XYZ"</li>
+                        <li>• "Jakie podobne problemy już rozwiązywaliśmy?"</li>
+                        <li>• "Pokaż historię z klientem ABC"</li>
+                        <li>• "Zaplanuj spotkanie na jutro o 14:00"</li>
+                    </ul>
+                </div>
+                
+                <button id="connectBtn" class="send-btn" onclick="toggleConnection()" style="width: 100%; margin-top: 20px;">
+                    Połącz z Agentem
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        
+        function updateConnectionStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            statusDiv.className = `status ${status}`;
+            statusDiv.innerHTML = `<div class="status-indicator"></div><span>${message}</span>`;
+            
+            if (status === 'connected') {
+                connectBtn.textContent = 'Rozłącz';
+                sendBtn.disabled = false;
+                isConnected = true;
+            } else {
+                connectBtn.textContent = 'Połącz z Agentem';
+                sendBtn.disabled = true;
+                isConnected = false;
+            }
+        }
+        
+        function addMessage(content, type = 'system') {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function connectToAgent() {
+            updateConnectionStatus('connecting', 'Łączenie z agentem...');
+            
+            try {
+                socket = new WebSocket('ws://localhost:8765');
+                
+                socket.onopen = function(event) {
+                    updateConnectionStatus('connected', 'Połączony z Google ADK Business Agent');
+                    addMessage('Połączono z agentem! Możesz zadawać pytania.', 'system');
+                };
+                
+                socket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'welcome') {
+                            addMessage(data.message, 'system');
+                        } else if (data.type === 'response_chunk') {
+                            // Strumieniowa odpowiedź
+                            const lastMessage = document.querySelector('.message.agent:last-child');
+                            if (lastMessage && lastMessage.dataset.streaming === 'true') {
+                                lastMessage.textContent += data.content;
+                            } else {
+                                const messageDiv = document.createElement('div');
+                                messageDiv.className = 'message agent';
+                                messageDiv.dataset.streaming = 'true';
+                                messageDiv.textContent = data.content;
+                                document.getElementById('chatMessages').appendChild(messageDiv);
+                            }
+                            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                        } else if (data.type === 'response_complete') {
+                            const lastMessage = document.querySelector('.message.agent:last-child');
+                            if (lastMessage) {
+                                lastMessage.dataset.streaming = 'false';
+                            }
+                        } else if (data.type === 'error') {
+                            addMessage(`Błąd: ${data.message}`, 'system');
+                        }
+                    } catch (e) {
+                        addMessage(event.data, 'agent');
+                    }
+                };
+                
+                socket.onclose = function(event) {
+                    updateConnectionStatus('disconnected', 'Rozłączony z agentem');
+                    addMessage('Połączenie z agentem zostało zamknięte.', 'system');
+                    socket = null;
+                };
+                
+                socket.onerror = function(error) {
+                    updateConnectionStatus('disconnected', 'Błąd połączenia');
+                    addMessage('Nie można połączyć z agentem. Sprawdź czy serwer działa.', 'system');
+                    socket = null;
+                };
+                
+            } catch (error) {
+                updateConnectionStatus('disconnected', 'Błąd połączenia');
+                addMessage('Błąd połączenia: ' + error.message, 'system');
+            }
+        }
+        
+        function disconnectFromAgent() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+            updateConnectionStatus('disconnected', 'Rozłączony z agentem');
+        }
+        
+        function toggleConnection() {
+            if (isConnected) {
+                disconnectFromAgent();
+            } else {
+                connectToAgent();
+            }
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && socket && socket.readyState === WebSocket.OPEN) {
+                addMessage(message, 'user');
+                
+                socket.send(JSON.stringify({
+                    type: 'message',
+                    content: message
+                }));
+                
+                input.value = '';
+            }
+        }
+        
+        function quickMessage(message) {
+            const input = document.getElementById('messageInput');
+            input.value = message;
+            if (isConnected) {
+                sendMessage();
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Auto-connect po załadowaniu strony
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                addMessage('Kliknij "Połącz z Agentem" żeby rozpocząć pracę.', 'system');
+            }, 500);
+        });
+    </script>
+</body>
+</html> 

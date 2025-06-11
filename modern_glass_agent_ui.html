@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google ADK Business Agent - Modern Glass UI</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary-blue: #007AFF;
+            --primary-gray: #e2e8f0;
+            --secondary-mint: #30D158;
+            --secondary-orange: #FF9500;
+            --neutral-white: rgba(15, 23, 42, 0.95);
+            --neutral-gray: rgba(71, 85, 105, 0.8);
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --shadow-glass: 0 8px 32px rgba(31, 38, 135, 0.37);
+            --backdrop-blur: blur(20px);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, 
+                #f8fafc 0%, 
+                #f1f5f9 25%, 
+                #e2e8f0 50%, 
+                #cbd5e1 75%, 
+                #3b82f6 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Animated background elements */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: float 20s infinite linear;
+            z-index: -1;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-50px, -50px); }
+        }
+        
+        .glass-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
+            background: var(--glass-bg);
+            border-radius: 32px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-glass);
+            min-height: 90vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Glass morphism header */
+        .glass-header {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.25), 
+                rgba(255, 255, 255, 0.1));
+            backdrop-filter: var(--backdrop-blur);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 32px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .glass-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.5), 
+                transparent);
+        }
+        
+        .glass-header h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 700;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+        
+        .glass-header p {
+            font-size: 1.2rem;
+            color: var(--neutral-gray);
+            font-weight: 400;
+            opacity: 0.8;
+        }
+        
+        /* Main content grid */
+        .glass-main {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            padding: 32px;
+            min-height: 600px;
+        }
+        
+        /* Glass panels */
+        .glass-panel {
+            backdrop-filter: var(--backdrop-blur);
+            -webkit-backdrop-filter: var(--backdrop-blur);
+            background: var(--glass-bg);
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-glass);
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+        }
+        
+        .panel-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--neutral-white);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .panel-title::before {
+            content: attr(data-emoji);
+            font-size: 1.8rem;
+        }
+        
+        /* Status indicator with glass effect */
+        .glass-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            backdrop-filter: var(--backdrop-blur);
+            background: var(--glass-bg);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 24px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .glass-status.connected {
+            background: rgba(48, 209, 88, 0.2);
+            border-color: rgba(48, 209, 88, 0.4);
+            color: var(--secondary-mint);
+        }
+        
+        .glass-status.disconnected {
+            background: rgba(255, 149, 0, 0.2);
+            border-color: rgba(255, 149, 0, 0.4);
+            color: var(--secondary-orange);
+        }
+        
+        .glass-status.connecting {
+            background: rgba(0, 122, 255, 0.2);
+            border-color: rgba(0, 122, 255, 0.4);
+            color: var(--primary-blue);
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse-glow 2s infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+            50% { opacity: 0.7; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+        }
+        
+        /* Chat messages with enhanced glass */
+        .glass-messages {
+            height: 600px;
+            backdrop-filter: var(--backdrop-blur);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 24px;
+            scroll-behavior: smooth;
+        }
+        
+        .glass-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .glass-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .glass-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        .glass-message {
+            margin-bottom: 16px;
+            padding: 16px 20px;
+            border-radius: 18px;
+            max-width: 85%;
+            word-wrap: break-word;
+            position: relative;
+            backdrop-filter: blur(10px);
+            animation: messageSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .glass-message.user {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            margin-left: auto;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+        
+        .glass-message.agent {
+            background: rgba(255, 255, 255, 0.4);
+            color: var(--neutral-white);
+            border: 1px solid var(--glass-border);
+            border-left: 4px solid #3b82f6;
+            white-space: pre-line;
+            line-height: 1.7;
+            font-size: 15px;
+            min-height: 80px;
+            padding: 24px 24px;
+        }
+
+        /* Formatowanie odpowiedzi agenta */
+        .glass-message.agent .agent-response {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .glass-message.agent .email-list {
+            margin: 16px 0;
+        }
+
+        .glass-message.agent .email-item {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-left: 3px solid #3b82f6;
+            transition: all 0.2s ease;
+        }
+
+        .glass-message.agent .email-item:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(4px);
+        }
+
+        .glass-message.agent .email-id {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            background: rgba(59, 130, 246, 0.15);
+            color: #1e40af;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .glass-message.agent .email-subject {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .glass-message.agent .email-meta {
+            font-size: 13px;
+            color: rgba(71, 85, 105, 0.8);
+            margin-top: 4px;
+        }
+
+        .glass-message.agent .email-sender {
+            color: #3b82f6;
+            font-weight: 500;
+        }
+
+        .glass-message.agent .email-date {
+            background: rgba(71, 85, 105, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+        
+        .glass-message.system {
+            background: rgba(255, 255, 255, 0.3);
+            color: rgba(71, 85, 105, 0.8);
+            text-align: center;
+            margin: 16px auto;
+            font-style: italic;
+        }
+        
+        /* Modern input group */
+        .glass-input-group {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+        
+        .glass-input {
+            flex: 1;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            color: var(--neutral-white);
+            font-size: 16px;
+            outline: none;
+            backdrop-filter: var(--backdrop-blur);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-input::placeholder {
+            color: rgba(71, 85, 105, 0.6);
+        }
+        
+        .glass-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        .glass-btn {
+            padding: 16px 28px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: var(--backdrop-blur);
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+        
+        .glass-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+        
+        .glass-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Quick actions grid */
+        .glass-quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .glass-quick-btn {
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid var(--glass-border);
+            color: var(--neutral-white);
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: var(--backdrop-blur);
+            text-align: center;
+        }
+        
+        .glass-quick-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            transform: translateY(-1px);
+        }
+        
+        /* Features list with glass cards */
+        .glass-features {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .glass-feature {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .glass-feature:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateX(4px);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+        
+        .feature-text {
+            flex: 1;
+        }
+        
+        .feature-text strong {
+            color: var(--neutral-white);
+            font-weight: 600;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .feature-text small {
+            color: rgba(71, 85, 105, 0.7);
+            font-size: 0.9rem;
+        }
+        
+        /* Commands panel */
+        .glass-commands {
+            margin-top: 32px;
+            padding: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+        }
+        
+        .commands-title {
+            color: #3b82f6;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .commands-list {
+            list-style: none;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        .commands-list li {
+            color: rgba(71, 85, 105, 0.8);
+            margin-bottom: 8px;
+            padding-left: 16px;
+            position: relative;
+        }
+        
+        .commands-list li::before {
+            content: '•';
+            color: var(--primary-blue);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1024px) {
+            .glass-main {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 24px;
+            }
+            
+            .glass-quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            
+            .glass-container {
+                border-radius: 20px;
+                min-height: 95vh;
+            }
+            
+            .glass-header {
+                padding: 24px 20px;
+            }
+            
+            .glass-main {
+                padding: 20px;
+                gap: 16px;
+            }
+            
+            .glass-panel {
+                padding: 20px;
+            }
+            
+            .glass-messages {
+                height: 300px;
+            }
+        }
+        
+        /* Loading animation */
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 8px;
+        }
+        
+        .loading-dots span {
+            width: 6px;
+            height: 6px;
+            background: currentColor;
+            border-radius: 50%;
+            animation: loadingDots 1.4s infinite ease-in-out;
+        }
+        
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes loadingDots {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-container">
+        <!-- Header -->
+        <div class="glass-header">
+            <h1>🤖 Google ADK Business Agent</h1>
+            <p>Nowoczesny asystent biznesowy z technologią Glass UI</p>
+        </div>
+        
+        <!-- Main content -->
+        <div class="glass-main">
+            <!-- Chat Panel -->
+            <div class="glass-panel">
+                <div class="panel-title" data-emoji="💬">Czat z Agentem</div>
+                
+                <div id="connectionStatus" class="glass-status disconnected">
+                    <div class="status-dot"></div>
+                    <span>Rozłączony z agentem</span>
+                </div>
+                
+                <div id="chatMessages" class="glass-messages">
+                    <div class="glass-message system">
+                        Kliknij "Połącz z Agentem" żeby rozpocząć rozmowę 🚀
+                    </div>
+                </div>
+                
+                <div class="glass-quick-actions">
+                    <button class="glass-quick-btn" onclick="quickMessage('Sprawdź moje najnowsze emaile w Gmail')">
+                        📧 Sprawdź Gmail
+                    </button>
+                    <button class="glass-quick-btn" onclick="quickMessage('Pokaż moje spotkania na dziś w kalendarzu')">
+                        📅 Kalendarz dziś
+                    </button>
+                    <button class="glass-quick-btn" onclick="quickMessage('Przeanalizuj i klasyfikuj ostatnie emaile')">
+                        🧠 Analiza emaili
+                    </button>
+                    <button class="glass-quick-btn" onclick="quickMessage('Jakie mam dokumenty na Google Docs?')">
+                        📄 Google Docs
+                    </button>
+                </div>
+                
+                <div class="glass-input-group">
+                    <input type="text" 
+                           id="messageInput" 
+                           class="glass-input" 
+                           placeholder="Napisz wiadomość do agenta..." 
+                           onkeypress="handleKeyPress(event)">
+                    <button id="sendBtn" 
+                            class="glass-btn" 
+                            onclick="sendMessage()" 
+                            disabled>
+                        Wyślij
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Features Panel -->
+            <div class="glass-panel">
+                <div class="panel-title" data-emoji="🎯">Funkcje Agenta</div>
+                
+                <div class="glass-features">
+                    <div class="glass-feature">
+                        <div class="feature-icon">📧</div>
+                        <div class="feature-text">
+                            <strong>Gmail Integration</strong>
+                            <small>Automatyczna analiza i klasyfikacja emaili</small>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-feature">
+                        <div class="feature-icon">📅</div>
+                        <div class="feature-text">
+                            <strong>Google Calendar</strong>
+                            <small>Zarządzanie spotkaniami z Google Meet</small>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-feature">
+                        <div class="feature-icon">📄</div>
+                        <div class="feature-text">
+                            <strong>Google Docs</strong>
+                            <small>Tworzenie i edycja dokumentów</small>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-feature">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-text">
+                            <strong>Raporty Biznesowe</strong>
+                            <small>Analiza danych i KPI</small>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-feature">
+                        <div class="feature-icon">🧠</div>
+                        <div class="feature-text">
+                            <strong>AI Analytics</strong>
+                            <small>Inteligentna analiza z kontekstem</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass-commands">
+                    <div class="commands-title">
+                        🚀 Przykładowe Komendy
+                    </div>
+                    <ul class="commands-list">
+                        <li>"Sprawdź nieprzeczytane emaile"</li>
+                        <li>"Umów spotkanie z [email] na jutro o 14:00"</li>
+                        <li>"Jakie mam dokumenty zawierające 'projekt'?"</li>
+                        <li>"Przeanalizuj ostatnie emaile od [osoba]"</li>
+                        <li>"Stwórz dokument z notatkami ze spotkania"</li>
+                        <li>"Pokaż kalendarz na ten tydzień"</li>
+                    </ul>
+                </div>
+                
+                <button id="connectBtn" 
+                        class="glass-btn" 
+                        onclick="toggleConnection()" 
+                        style="width: 100%; margin-top: 24px;">
+                    Połącz z Agentem
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        
+        // WebSocket connection
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+        
+        function connect() {
+            const connectBtn = document.getElementById('connectBtn');
+            const status = document.getElementById('connectionStatus');
+            
+            connectBtn.disabled = true;
+            updateStatus('connecting', 'Łączenie...');
+            
+            try {
+                socket = new WebSocket('ws://localhost:8765');
+                
+                socket.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus('connected', 'Połączony z agentem');
+                    connectBtn.textContent = 'Rozłącz';
+                    connectBtn.disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    addMessage('system', 'Połączony z Google ADK Business Agent! 🎉');
+                };
+                
+                socket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'response_chunk' && data.content) {
+                        addMessage('agent', data.content);
+                    } else if (data.type === 'welcome' && data.message) {
+                        addMessage('system', data.message);
+                    } else if (data.text || data.message || data.content) {
+                        addMessage('agent', data.text || data.message || data.content || 'Otrzymano odpowiedź od agenta');
+                    }
+                };
+                
+                socket.onclose = function(event) {
+                    isConnected = false;
+                    updateStatus('disconnected', 'Rozłączony z agentem');
+                    connectBtn.textContent = 'Połącz z Agentem';
+                    connectBtn.disabled = false;
+                    document.getElementById('sendBtn').disabled = true;
+                    addMessage('system', 'Połączenie zostało zakończone');
+                };
+                
+                socket.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    updateStatus('disconnected', 'Błąd połączenia');
+                    connectBtn.textContent = 'Połącz z Agentem';
+                    connectBtn.disabled = false;
+                    addMessage('system', 'Błąd połączenia. Sprawdź czy agent działa na porcie 8765');
+                };
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                updateStatus('disconnected', 'Błąd połączenia');
+                connectBtn.disabled = false;
+                addMessage('system', 'Nie można połączyć się z agentem');
+            }
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.close();
+            }
+        }
+        
+        function updateStatus(type, message) {
+            const status = document.getElementById('connectionStatus');
+            status.className = `glass-status ${type}`;
+            status.querySelector('span').textContent = message;
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message && isConnected) {
+                addMessage('user', message);
+                
+                // Show loading indicator
+                const loadingMsg = addMessage('agent', 'Przetwarzam Twoją prośbę');
+                loadingMsg.innerHTML += '<div class="loading-dots"><span></span><span></span><span></span></div>';
+                
+                socket.send(JSON.stringify({
+                    type: 'message',
+                    content: message
+                }));
+                
+                input.value = '';
+            }
+        }
+        
+        function quickMessage(message) {
+            if (isConnected) {
+                document.getElementById('messageInput').value = message;
+                sendMessage();
+            } else {
+                addMessage('system', 'Najpierw połącz się z agentem');
+            }
+        }
+        
+        function addMessage(type, content) {
+            const messages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `glass-message ${type}`;
+            
+            // Remove loading messages when adding agent response
+            if (type === 'agent') {
+                const loadingMessages = messages.querySelectorAll('.glass-message.agent .loading-dots');
+                loadingMessages.forEach(loading => loading.parentElement.remove());
+                
+                // Format agent responses
+                messageDiv.innerHTML = formatAgentResponse(content);
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        function formatAgentResponse(text) {
+            // Formatowanie list emaili
+            if (text.includes('ID:') && text.includes('Temat:')) {
+                return formatEmailList(text);
+            }
+            
+            // Formatowanie standardowych odpowiedzi z lepszymi łamaniami linii
+            return `<div class="agent-response">${text.replace(/\n/g, '<br>')}</div>`;
+        }
+
+        function formatEmailList(text) {
+            const lines = text.split('\n');
+            let formattedHtml = '';
+            let inEmailList = false;
+            
+            for (let line of lines) {
+                line = line.trim();
+                
+                // Sprawdź czy to linia z emailem (zawiera numer + ID:)
+                if (line.match(/^\d+\.\s+ID:/)) {
+                    if (!inEmailList) {
+                        formattedHtml += '<div class="email-list">';
+                        inEmailList = true;
+                    }
+                    
+                    formattedHtml += formatEmailItem(line);
+                } else {
+                    if (inEmailList) {
+                        formattedHtml += '</div>';
+                        inEmailList = false;
+                    }
+                    
+                    if (line) {
+                        formattedHtml += `<div class="agent-response">${line}</div>`;
+                    }
+                }
+            }
+            
+            if (inEmailList) {
+                formattedHtml += '</div>';
+            }
+            
+            return formattedHtml;
+        }
+
+        function formatEmailItem(line) {
+            // Regex do parsowania linii emaila
+            const emailRegex = /(\d+)\.\s+ID:\s+([^\s|]+)\s*\|\s*Temat:\s+([^|]+?)\s*\|\s*Od:\s+([^|]+?)\s*\|\s*Data:\s+(.+)/;
+            const match = line.match(emailRegex);
+            
+            if (match) {
+                const [, number, id, subject, sender, date] = match;
+                
+                return `
+                    <div class="email-item">
+                        <span class="email-id">ID: ${id.trim()}</span>
+                        <div class="email-subject">${subject.trim()}</div>
+                        <div class="email-meta">
+                            <span class="email-sender">${sender.trim()}</span>
+                            <span class="email-date">${date.trim()}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Fallback jeśli regex nie pasuje
+            return `<div class="email-item">${line}</div>`;
+        }
+        
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Auto-focus input when connected
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('messageInput');
+            
+            input.addEventListener('focus', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.15)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+        });
+    </script>
+</body>
+</html> 

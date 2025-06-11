@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div id="status">Disconnected</div>
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <button onclick="sendTest()">Send Test</button>
+    <div id="messages"></div>
+
+    <script>
+        let ws = null;
+        
+        function log(message) {
+            const div = document.createElement('div');
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            document.getElementById('messages').appendChild(div);
+        }
+        
+        function connect() {
+            log('Attempting to connect to ws://localhost:8765');
+            
+            try {
+                ws = new WebSocket('ws://localhost:8765');
+                
+                ws.onopen = function(event) {
+                    log('✅ Connected successfully!');
+                    document.getElementById('status').textContent = 'Connected';
+                };
+                
+                ws.onmessage = function(event) {
+                    log('📩 Received: ' + event.data);
+                };
+                
+                ws.onclose = function(event) {
+                    log('❌ Connection closed. Code: ' + event.code + ', Reason: ' + event.reason);
+                    document.getElementById('status').textContent = 'Disconnected';
+                    ws = null;
+                };
+                
+                ws.onerror = function(error) {
+                    log('🚨 WebSocket error: ' + error);
+                    console.error('WebSocket error:', error);
+                };
+                
+            } catch (error) {
+                log('🚨 Connection error: ' + error.message);
+                console.error('Connection error:', error);
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function sendTest() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const testMessage = JSON.stringify({
+                    type: 'message',
+                    content: 'test connection'
+                });
+                ws.send(testMessage);
+                log('📤 Sent test message');
+            } else {
+                log('❌ Not connected');
+            }
+        }
+    </script>
+</body>
+</html> 
