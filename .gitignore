@@ -8,8 +8,12 @@ nowyauth.json
 
 # Pliki konfiguracyjne z danymi wrażliwymi
 .env
+.env.*
 .env.local
 .env.production
+.env.backup
+.env.old
+.env.updated
 *.secret
 
 # Pliki tymczasowe
