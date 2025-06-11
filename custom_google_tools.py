@@ -793,4 +793,269 @@ async def list_google_docs(
             'success': False,
             'error': str(e),
             'message': f'Nie można pobrać listy dokumentów: {e}'
+        }
+
+async def list_drawio_files(
+    max_results: int = 10,
+    search_query: str = ""
+) -> Dict[str, Any]:
+    """
+    Lista plików draw.io z Google Drive
+    
+    Args:
+        max_results: Maksymalna liczba plików do zwrócenia
+        search_query: Zapytanie wyszukiwania w nazwie pliku (opcjonalne)
+    """
+    try:
+        tools = CustomGoogleTools()
+        
+        print(f"🎨 Pobieranie listy plików draw.io z Google Drive...")
+        
+        # Dodaj timeout żeby uniknąć zawieszenia
+        import socket
+        socket.setdefaulttimeout(30)
+        
+        # Konstruuj zapytanie dla plików draw.io
+        # Pliki draw.io mogą mieć różne MIME types
+        drawio_queries = [
+            "mimeType='application/vnd.jgraph.mxfile'",  # Standard draw.io files
+            "name contains '.drawio'",  # Files with .drawio extension
+            "name contains '.draw.io'",  # Alternative extension
+            "mimeType='application/xml' and name contains 'drawio'",  # XML files from draw.io
+        ]
+        
+        all_files = []
+        
+        for query in drawio_queries:
+            if search_query:
+                full_query = f"({query}) and name contains '{search_query}'"
+            else:
+                full_query = query
+            
+            try:
+                results = tools.drive_service.files().list(
+                    q=full_query,
+                    pageSize=max_results,
+                    fields='files(id,name,mimeType,modifiedTime,size,webViewLink,owners)',
+                    orderBy='modifiedTime desc'
+                ).execute()
+                
+                files = results.get('files', [])
+                all_files.extend(files)
+                
+            except Exception as e:
+                print(f"⚠️ Błąd dla zapytania '{query}': {e}")
+                continue
+        
+        # Usuń duplikaty na podstawie ID
+        unique_files = {}
+        for file in all_files:
+            file_id = file.get('id')
+            if file_id not in unique_files:
+                unique_files[file_id] = file
+        
+        # Formatuj wyniki
+        formatted_files = []
+        for file in list(unique_files.values())[:max_results]:
+            file_info = {
+                'id': file.get('id'),
+                'name': file.get('name', 'Bez nazwy'),
+                'mime_type': file.get('mimeType'),
+                'size': file.get('size', 'Nieznany'),
+                'modified_date': file.get('modifiedTime'),
+                'web_view_link': file.get('webViewLink'),
+                'owners': [owner.get('displayName', 'Nieznany') for owner in file.get('owners', [])],
+                'is_drawio': True
+            }
+            formatted_files.append(file_info)
+        
+        return {
+            'success': True,
+            'files': formatted_files,
+            'count': len(formatted_files),
+            'search_query': search_query or 'wszystkie pliki draw.io',
+            'message': f'Znaleziono {len(formatted_files)} plików draw.io'
+        }
+        
+    except Exception as e:
+        print(f"❌ Błąd pobierania plików draw.io: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'message': f'Nie można pobrać plików draw.io: {e}'
+        }
+
+async def get_drawio_content(
+    file_id: str
+) -> Dict[str, Any]:
+    """
+    Pobiera treść pliku draw.io z Google Drive
+    
+    Args:
+        file_id: ID pliku draw.io w Google Drive
+    """
+    try:
+        tools = CustomGoogleTools()
+        
+        print(f"🎨 Pobieranie treści pliku draw.io: {file_id}")
+        
+        # Dodaj timeout żeby uniknąć zawieszenia
+        import socket
+        socket.setdefaulttimeout(30)
+        
+        # Pobierz metadane pliku
+        file_metadata = tools.drive_service.files().get(
+            fileId=file_id,
+            fields='id,name,mimeType,size,modifiedTime,webViewLink,owners'
+        ).execute()
+        
+        # Pobierz treść pliku
+        content = tools.drive_service.files().get_media(fileId=file_id).execute()
+        
+        # Dekoduj treść
+        if isinstance(content, bytes):
+            content_text = content.decode('utf-8')
+        else:
+            content_text = str(content)
+        
+        # Sprawdź czy to XML (pliki draw.io są w formacie XML)
+        import xml.etree.ElementTree as ET
+        try:
+            root = ET.fromstring(content_text)
+            is_xml = True
+            xml_root_tag = root.tag
+        except ET.ParseError:
+            is_xml = False
+            xml_root_tag = None
+        
+        # Wyciągnij teksty z diagramu (jeśli to XML)
+        diagram_texts = []
+        if is_xml:
+            try:
+                # Szukaj wszystkich elementów tekstowych w XML
+                for elem in root.iter():
+                    if elem.text and elem.text.strip():
+                        text = elem.text.strip()
+                        if len(text) > 1 and not text.isdigit():  # Filtruj krótkie/numeryczne wartości
+                            diagram_texts.append(text)
+                    
+                    # Sprawdź atrybuty - draw.io często przechowuje tekst w atrybutach
+                    for attr_name, attr_value in elem.attrib.items():
+                        if attr_name in ['value', 'label', 'text'] and attr_value.strip():
+                            text = attr_value.strip()
+                            if len(text) > 1:
+                                diagram_texts.append(text)
+                
+                # Usuń duplikaty zachowując kolejność
+                diagram_texts = list(dict.fromkeys(diagram_texts))
+                
+            except Exception as e:
+                print(f"⚠️ Błąd parsowania XML: {e}")
+        
+        return {
+            'success': True,
+            'file_id': file_id,
+            'name': file_metadata.get('name', 'Bez nazwy'),
+            'mime_type': file_metadata.get('mimeType'),
+            'size': file_metadata.get('size', 'Nieznany'),
+            'modified_date': file_metadata.get('modifiedTime'),
+            'web_view_link': file_metadata.get('webViewLink'),
+            'owners': [owner.get('displayName', 'Nieznany') for owner in file_metadata.get('owners', [])],
+            'raw_content': content_text[:1000] + '...' if len(content_text) > 1000 else content_text,  # Pierwsze 1000 znaków
+            'is_xml': is_xml,
+            'xml_root_tag': xml_root_tag,
+            'diagram_texts': diagram_texts,
+            'text_count': len(diagram_texts),
+            'content_length': len(content_text),
+            'message': f'Treść pliku draw.io "{file_metadata.get("name")}" została pobrana pomyślnie'
+        }
+        
+    except Exception as e:
+        print(f"❌ Błąd pobierania treści draw.io: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'message': f'Nie można pobrać treści pliku draw.io: {e}'
+        }
+
+async def search_drawio_diagrams(
+    search_text: str,
+    max_results: int = 10
+) -> Dict[str, Any]:
+    """
+    Wyszukuje diagramy draw.io które zawierają określony tekst
+    
+    Args:
+        search_text: Tekst do wyszukania w diagramach
+        max_results: Maksymalna liczba wyników
+    """
+    try:
+        print(f"🔍 Wyszukiwanie '{search_text}' w diagramach draw.io...")
+        
+        # Najpierw pobierz wszystkie pliki draw.io
+        all_files_result = await list_drawio_files(max_results=50)
+        
+        if not all_files_result['success']:
+            return all_files_result
+        
+        matching_files = []
+        
+        # Przeszukaj każdy plik
+        for file_info in all_files_result['files']:
+            try:
+                # Pobierz treść pliku
+                content_result = await get_drawio_content(file_info['id'])
+                
+                if content_result['success']:
+                    # Sprawdź czy wyszukiwany tekst występuje w treści
+                    found_in_texts = False
+                    found_in_content = False
+                    
+                    # Szukaj w wyciągniętych tekstach diagramu
+                    if content_result['diagram_texts']:
+                        for text in content_result['diagram_texts']:
+                            if search_text.lower() in text.lower():
+                                found_in_texts = True
+                                break
+                    
+                    # Szukaj w surowej treści XML
+                    if search_text.lower() in content_result['raw_content'].lower():
+                        found_in_content = True
+                    
+                    # Jeśli znaleziono, dodaj do wyników
+                    if found_in_texts or found_in_content:
+                        match_info = {
+                            **file_info,
+                            'found_in_texts': found_in_texts,
+                            'found_in_content': found_in_content,
+                            'matching_texts': [
+                                text for text in content_result['diagram_texts']
+                                if search_text.lower() in text.lower()
+                            ] if found_in_texts else [],
+                            'diagram_texts': content_result['diagram_texts']
+                        }
+                        matching_files.append(match_info)
+                
+            except Exception as e:
+                print(f"⚠️ Błąd przeszukiwania pliku {file_info['name']}: {e}")
+                continue
+        
+        # Ogranicz wyniki
+        matching_files = matching_files[:max_results]
+        
+        return {
+            'success': True,
+            'search_text': search_text,
+            'files': matching_files,
+            'count': len(matching_files),
+            'total_searched': len(all_files_result['files']),
+            'message': f'Znaleziono {len(matching_files)} diagramów draw.io zawierających "{search_text}"'
+        }
+        
+    except Exception as e:
+        print(f"❌ Błąd wyszukiwania w diagramach draw.io: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'message': f'Nie można przeszukać diagramów draw.io: {e}'
         } 

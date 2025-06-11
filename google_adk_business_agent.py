@@ -329,7 +329,7 @@ def business_before_model_callback(callback_context, llm_request):
 
 def business_before_tool_callback(**kwargs):
     """Callback wykonywany przed każdym wywołaniem narzędzia"""
-    # Obsługa różnych sygnatur callback funkcji
+    # Obsługa różnych sygnatur callback funkcji Google ADK
     callback_context = kwargs.get('callback_context')
     tool = kwargs.get('tool')
     function_call_id = kwargs.get('function_call_id')
@@ -342,29 +342,30 @@ def business_before_tool_callback(**kwargs):
     else:
         tool_name = "unknown_tool"
     
-    if callback_context and hasattr(callback_context, 'agent_name'):
+    if hasattr(callback_context, 'agent_name'):
         agent_name = callback_context.agent_name
     else:
         agent_name = "unknown_agent"
     
-    logger.info(f"🔧 Tool Call: {tool_name} dla agenta: {agent_name}")
+    logger.info(f"🔧 Tool Call: {agent_name} -> {tool_name}({str(args)[:100] if args else ''})")
     
-    # Bezpieczeństwo - nie pozwól usuwać wszystkich wydarzeń
-    if tool_name == "delete_calendar_event":
-        logger.warning("🚫 Sprawdzenie bezpieczeństwa dla delete_calendar_event")
+    # Jeśli callback_context ma atrybut 'state', użyj go do przechowywania informacji
+    if callback_context and hasattr(callback_context, 'state'):
+        if not hasattr(callback_context, 'state'):
+            callback_context.state = {}
     
-    # Loguj użycie narzędzi Google API
-    if tool_name in ["create_calendar_event", "get_gmail_messages", "get_calendar_events", "create_google_doc", "list_google_docs"]:
-        if callback_context and hasattr(callback_context, 'state'):
-            tools_used = callback_context.state.get("google_tools_used", [])
-            tools_used.append({
-                "tool": tool_name,
-                "timestamp": datetime.now().isoformat(),
-                "agent": agent_name,
-                "function_call_id": function_call_id,
-                "args": str(args) if args else None
-            })
-            callback_context.state["google_tools_used"] = tools_used
+        # Loguj użycie narzędzi Google API
+        if tool_name in ["create_calendar_event", "get_gmail_messages", "get_calendar_events", "create_google_doc", "list_google_docs", "list_drawio_files", "get_drawio_content", "search_drawio_diagrams"]:
+            if callback_context and hasattr(callback_context, 'state'):
+                tools_used = callback_context.state.get("google_tools_used", [])
+                tools_used.append({
+                    "tool": tool_name,
+                    "timestamp": datetime.now().isoformat(),
+                    "agent": agent_name,
+                    "function_call_id": function_call_id,
+                    "args": str(args) if args else None
+                })
+                callback_context.state["google_tools_used"] = tools_used
     
     return None
 
@@ -588,14 +589,16 @@ class GoogleADKBusinessAgent:
                 from custom_google_tools import (
                     get_calendar_events, get_gmail_messages, get_gmail_message_content, 
                     create_calendar_event, update_calendar_event, delete_calendar_event,
-                    create_google_doc, get_google_doc_content, update_google_doc, list_google_docs
+                    create_google_doc, get_google_doc_content, update_google_doc, list_google_docs,
+                    list_drawio_files, get_drawio_content, search_drawio_diagrams
                 )
                 custom_google_tools = [
                     get_calendar_events, get_gmail_messages, get_gmail_message_content, 
                     create_calendar_event, update_calendar_event, delete_calendar_event,
-                    create_google_doc, get_google_doc_content, update_google_doc, list_google_docs
+                    create_google_doc, get_google_doc_content, update_google_doc, list_google_docs,
+                    list_drawio_files, get_drawio_content, search_drawio_diagrams
                 ]
-                logger.info("✅ Załadowano niestandardowe narzędzia Google (w tym Google Docs)!")
+                logger.info("✅ Załadowano niestandardowe narzędzia Google (w tym Google Docs i draw.io)!")
                 
                 # Łączymy wszystkie narzędzia
                 all_tools = business_tools + custom_google_tools
@@ -641,6 +644,13 @@ WAŻNE dla Google Docs API:
 - Do listy dokumentów używaj list_google_docs(max_results, search_query)
 - append=True dodaje treść na końcu, append=False zastępuje całość
 
+WAŻNE dla draw.io API:
+- Do listy plików draw.io używaj list_drawio_files(max_results, search_query)
+- Do czytania treści diagramu używaj get_drawio_content(file_id)
+- Do wyszukiwania diagramów zawierających tekst używaj search_drawio_diagrams(search_text, max_results)
+- draw.io pliki są w formacie XML i zawierają teksty z diagramów
+- search_drawio_diagrams zwraca pliki z pasującymi tekstami w diagramach
+
 KRYTYCZNE - TWORZENIE WYDARZEŃ:
 Gdy użytkownik chce dodać/zaplanować wydarzenie:
 1. ZAWSZE najpierw sprawdź datę: get_current_datetime()
@@ -683,7 +693,11 @@ Przykłady:
 - "stwórz dokument o nazwie Raport" → create_google_doc(title="Raport", content="Treść...")
 - "pokaż moje dokumenty" → list_google_docs(max_results=10)
 - "przeczytaj dokument o ID xyz" → get_google_doc_content(document_id="xyz")
-- "dodaj tekst do dokumentu xyz" → update_google_doc(document_id="xyz", new_content="tekst", append=True)""",
+- "dodaj tekst do dokumentu xyz" → update_google_doc(document_id="xyz", new_content="tekst", append=True)
+- "znajdź pliki draw.io" → list_drawio_files(max_results=10)
+- "pliki draw.io z metaverse" → list_drawio_files(max_results=10, search_query="metaverse")
+- "przeczytaj diagram ABC" → get_drawio_content(file_id="abc123")
+- "znajdz diagramy z tekstem metalayers" → search_drawio_diagrams(search_text="metalayers", max_results=10)""",
                 description="Profesjonalny asystent biznesowy z dostępem do Gmail, Calendar i narzędzi analitycznych",
                 
                 # OPTYMALIZACJA: Ustawienia dla szybkości
