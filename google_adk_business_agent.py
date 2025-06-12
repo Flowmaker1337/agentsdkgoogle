@@ -355,7 +355,7 @@ def business_before_tool_callback(**kwargs):
             callback_context.state = {}
     
         # Loguj użycie narzędzi Google API
-        if tool_name in ["create_calendar_event", "get_gmail_messages", "get_calendar_events", "create_google_doc", "list_google_docs", "list_drawio_files", "get_drawio_content", "search_drawio_diagrams"]:
+        if tool_name in ["create_calendar_event", "get_gmail_messages", "get_calendar_events", "send_gmail_message", "create_google_doc", "list_google_docs", "list_drawio_files", "get_drawio_content", "search_drawio_diagrams"]:
             if callback_context and hasattr(callback_context, 'state'):
                 tools_used = callback_context.state.get("google_tools_used", [])
                 tools_used.append({
@@ -405,6 +405,21 @@ def business_after_tool_callback(**kwargs):
                     "created_at": datetime.now().isoformat()
                 })
                 callback_context.state["created_events"] = created_events
+        
+        # Specjalna obróbka dla Gmail send message
+        if tool_name == "send_gmail_message":
+            if isinstance(tool_response, dict) and tool_response.get('success'):
+                logger.info(f"✅ Wysłano email do: {tool_response.get('to', 'N/A')} z tematem: {tool_response.get('subject', 'N/A')}")
+                
+                # Zapisz informacje o wysłanym emailu w sesji
+                sent_emails = callback_context.state.get("sent_emails", [])
+                sent_emails.append({
+                    "message_id": tool_response.get('message_id'),
+                    "to": tool_response.get('to'),
+                    "subject": tool_response.get('subject'),
+                    "sent_at": datetime.now().isoformat()
+                })
+                callback_context.state["sent_emails"] = sent_emails
     
     return None
 
@@ -415,11 +430,13 @@ def business_after_agent_callback(callback_context):
     tool_stats = callback_context.state.get("tool_statistics", {})
     google_tools = callback_context.state.get("google_tools_used", [])
     created_events = callback_context.state.get("created_events", [])
+    sent_emails = callback_context.state.get("sent_emails", [])
     
     logger.info(f"📊 Agent {callback_context.agent_name} - Statystyki:")
     logger.info(f"📊 Użyte narzędzia: {tool_stats}")
     logger.info(f"📊 Google API calls: {len(google_tools)}")
     logger.info(f"📊 Utworzone wydarzenia: {len(created_events)}")
+    logger.info(f"📊 Wysłane emaile: {len(sent_emails)}")
     
     return None
 
@@ -587,13 +604,13 @@ class GoogleADKBusinessAgent:
             logger.info("🔧 Próba z niestandardowymi narzędziami Google...")
             try:
                 from custom_google_tools import (
-                    get_calendar_events, get_gmail_messages, get_gmail_message_content, 
+                    get_calendar_events, get_gmail_messages, get_gmail_message_content, send_gmail_message,
                     create_calendar_event, update_calendar_event, delete_calendar_event,
                     create_google_doc, get_google_doc_content, update_google_doc, list_google_docs,
                     list_drawio_files, get_drawio_content, search_drawio_diagrams
                 )
                 custom_google_tools = [
-                    get_calendar_events, get_gmail_messages, get_gmail_message_content, 
+                    get_calendar_events, get_gmail_messages, get_gmail_message_content, send_gmail_message,
                     create_calendar_event, update_calendar_event, delete_calendar_event,
                     create_google_doc, get_google_doc_content, update_google_doc, list_google_docs,
                     list_drawio_files, get_drawio_content, search_drawio_diagrams
@@ -669,6 +686,7 @@ Gdy użytkownik chce dodać uczestników do istniejącego wydarzenia:
 WAŻNE dla Gmail API:
 - Do czytania emaili używaj get_gmail_messages() z user_id="me"
 - Do pobierania treści konkretnego emaila używaj get_gmail_message_content(message_id)
+- Do wysyłania emaili używaj send_gmail_message(to, subject, body, cc, bcc)
 - "me" oznacza konto aktualnego użytkownika
 - Dla emaili od konkretnej osoby użyj query="from:email@domain.com"
 - ZAWSZE gdy użytkownik prosi o "treść" emaila - użyj get_gmail_message_content()!
@@ -687,6 +705,8 @@ Przykłady:
 - "emaile od Aureliusza" → get_gmail_messages(user_id="me", query="from:aureliusz")
 - "treść emaila od Aureliusza" → PIERWSZE get_gmail_messages + POTEM get_gmail_message_content(message_id)
 - "przywołaj treść emaila" → get_gmail_message_content(message_id="ID_z_poprzedniego_wyszukiwania")
+- "wyślij email do john@example.com" → send_gmail_message(to="john@example.com", subject="Temat", body="Treść")
+- "napisz email z raportem" → send_gmail_message(to="odbiorca@email.com", subject="Raport", body="Treść raportu")
 - "jakie mam spotkania jutro" → get_calendar_events(calendar_id="primary")
 - "dodaj spotkanie z Markiem jutro o 15:00" → create_calendar_event()
 - "zaplanuj prezentację na piątek" → create_calendar_event()

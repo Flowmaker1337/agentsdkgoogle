@@ -1058,4 +1058,73 @@ async def search_drawio_diagrams(
             'success': False,
             'error': str(e),
             'message': f'Nie można przeszukać diagramów draw.io: {e}'
+        }
+
+async def send_gmail_message(
+    to: str,
+    subject: str,
+    body: str,
+    cc: Optional[List[str]] = None,
+    bcc: Optional[List[str]] = None,
+    user_id: str = "me"
+) -> Dict[str, Any]:
+    """
+    Wysyła wiadomość email przez Gmail API
+    
+    Args:
+        to: Adres email odbiorcy
+        subject: Temat wiadomości
+        body: Treść wiadomości (może zawierać HTML)
+        cc: Lista adresów CC (opcjonalne)
+        bcc: Lista adresów BCC (opcjonalne)
+        user_id: ID użytkownika (domyślnie "me")
+    """
+    try:
+        tools = CustomGoogleTools()
+        
+        print(f"📤 Wysyłanie emaila do: {to}, temat: '{subject}'")
+        
+        # Buduj wiadomość email
+        message = f"To: {to}\n"
+        message += f"Subject: {subject}\n"
+        
+        if cc:
+            message += f"Cc: {', '.join(cc)}\n"
+        if bcc:
+            message += f"Bcc: {', '.join(bcc)}\n"
+            
+        message += f"\n{body}"
+        
+        # Koduj wiadomość w base64
+        encoded_message = base64.urlsafe_b64encode(message.encode()).decode()
+        
+        # Utwórz obiekt wiadomości dla Gmail API
+        gmail_message = {
+            'raw': encoded_message
+        }
+        
+        # Wyślij wiadomość
+        sent_message = tools.gmail_service.users().messages().send(
+            userId=user_id,
+            body=gmail_message
+        ).execute()
+        
+        return {
+            'success': True,
+            'message_id': sent_message.get('id'),
+            'thread_id': sent_message.get('threadId'),
+            'to': to,
+            'subject': subject,
+            'cc': cc or [],
+            'bcc': bcc or [],
+            'label_ids': sent_message.get('labelIds', []),
+            'message': f'Email wysłany pomyślnie do {to}'
+        }
+        
+    except Exception as e:
+        print(f"❌ Błąd wysyłania emaila: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'message': f'Nie można wysłać emaila do {to}: {e}'
         } 
