@@ -1183,12 +1183,11 @@
         // Session management functions
         async function loadSessions() {
             try {
-                console.log('🔄 Ładowanie sesji z:', window.location.origin + '/api/sessions');
-                console.log('🔄 Pełny URL:', window.location.href);
+                const API_BASE_URL = 'http://localhost:8000';
+                console.log('🔄 Ładowanie sesji z:', API_BASE_URL + '/api/sessions');
                 
-                const response = await fetch('/api/sessions');
+                const response = await fetch(API_BASE_URL + '/api/sessions');
                 console.log('📡 Response status:', response.status);
-                console.log('📡 Response headers:', [...response.headers.entries()]);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1207,20 +1206,7 @@
                 }
             } catch (error) {
                 console.error('❌ Błąd połączenia z API sesji:', error);
-                console.error('❌ Error type:', error.constructor.name);
-                console.error('❌ Error message:', error.message);
-                console.error('❌ URL:', window.location.href);
-                console.error('❌ Origin:', window.location.origin);
-                
-                // Pokaż komunikat o błędzie z więcej szczegółów
-                const activeSessions = document.getElementById('activeSessions');
-                activeSessions.innerHTML = `
-                    <div class="no-sessions">
-                        ❌ Błąd połączenia z API<br>
-                        <small>${error.message}</small><br>
-                        <small>Sprawdź konsolę (F12)</small>
-                    </div>
-                `;
+                showFallbackSessions();
             }
         }
         
@@ -1287,7 +1273,8 @@
         
         async function createNewSession() {
             try {
-                const response = await fetch('/api/sessions', {
+                const API_BASE_URL = 'http://localhost:8000';
+                const response = await fetch(API_BASE_URL + '/api/sessions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1302,14 +1289,9 @@
                 
                 if (data.success) {
                     console.log('✅ Utworzono nową sesję:', data.session_id);
-                    
-                    // Wyczyść obecny chat
                     clearCurrentChat();
                     currentSessionId = data.session_id;
-                    
-                    // Odśwież listę sesji
                     await loadSessions();
-                    
                     addMessage('system', `🆕 Rozpoczęto nową sesję: "${data.title}"`);
                     closeSidebar();
                 } else {
@@ -1329,23 +1311,16 @@
             }
             
             try {
-                // Pobierz historię wiadomości z sesji
-                const response = await fetch(`/api/sessions/${sessionId}/messages`);
+                const API_BASE_URL = 'http://localhost:8000';
+                const response = await fetch(`${API_BASE_URL}/api/sessions/${sessionId}/messages`);
                 const data = await response.json();
                 
                 if (data.success) {
                     console.log('✅ Załadowano sesję:', sessionId);
-                    
-                    // Wyczyść obecny chat
                     clearCurrentChat();
                     currentSessionId = sessionId;
-                    
-                    // Załaduj historię wiadomości
                     loadSessionHistory(data.messages);
-                    
-                    // Aktualizuj aktywną sesję w sidebarze
                     updateActiveSession(sessionId);
-                    
                     addMessage('system', `📂 Załadowano sesję z ${data.messages.length} wiadomościami. Możesz kontynuować rozmowę!`);
                     closeSidebar();
                 } else {
@@ -1397,7 +1372,8 @@
             }
             
             try {
-                const response = await fetch(`/api/sessions/${currentSessionId}/messages`, {
+                const API_BASE_URL = 'http://localhost:8000';
+                const response = await fetch(`${API_BASE_URL}/api/sessions/${currentSessionId}/messages`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
