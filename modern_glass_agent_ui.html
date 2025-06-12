@@ -116,6 +116,167 @@
             opacity: 0.8;
         }
         
+        /* Sidebar styles */
+        .glass-sidebar {
+            position: fixed;
+            left: -320px;
+            top: 0;
+            width: 320px;
+            height: 100vh;
+            background: rgba(248, 250, 252, 0.95);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-right: 1px solid rgba(226, 232, 240, 0.8);
+            transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .glass-sidebar.open {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            text-align: center;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.9rem;
+            color: #64748b;
+            opacity: 0.8;
+        }
+
+        .sidebar-section {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+        }
+
+        .sidebar-section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+
+        .session-item {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .session-item:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateX(4px);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .session-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        .session-name {
+            font-weight: 500;
+            color: #1e293b;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .session-date {
+            font-size: 0.8rem;
+            color: #64748b;
+            opacity: 0.8;
+        }
+
+        .new-session-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .new-session-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .no-sessions {
+            padding: 16px;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            width: 48px;
+            height: 48px;
+            background: rgba(248, 250, 252, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1001;
+            color: #475569;
+            font-size: 1.2rem;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: scale(1.05);
+            border-color: rgba(59, 130, 246, 0.5);
+            color: #3b82f6;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
         /* Main content grid */
         .glass-main {
             display: grid;
@@ -561,6 +722,18 @@
             .glass-messages {
                 height: 300px;
             }
+            
+            .glass-sidebar {
+                width: 280px;
+                left: -280px;
+            }
+            
+            .sidebar-toggle {
+                top: 16px;
+                left: 16px;
+                width: 44px;
+                height: 44px;
+            }
         }
         
         /* Loading animation */
@@ -588,6 +761,59 @@
     </style>
 </head>
 <body>
+    <!-- Sidebar Toggle Button -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    
+    <!-- Sidebar -->
+    <div class="glass-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🤖 Agent Sessions</div>
+            <div class="sidebar-subtitle">Historia rozmów</div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Sesje</div>
+            <button class="new-session-btn" onclick="createNewSession()">
+                ➕ Nowa Rozmowa
+            </button>
+            <div class="sidebar-section-title" style="margin-top: 16px;">Aktywne Sesje</div>
+            <div id="activeSessions">
+                <div class="session-item active">
+                    <div class="session-name">Bieżąca sesja</div>
+                    <div class="session-date">Teraz</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Historia</div>
+            <div id="historySessions">
+                <!-- Historyczne sesje będą tutaj -->
+            </div>
+        </div>
+        
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Historia</div>
+            <div id="sessionHistory">
+                <div class="session-item">
+                    <div class="session-name">Analiza emaili biznesowych</div>
+                    <div class="session-date">11 cze 2025, 10:30</div>
+                </div>
+                <div class="session-item">
+                    <div class="session-name">Planowanie spotkań</div>
+                    <div class="session-date">10 cze 2025, 15:45</div>
+                </div>
+                <div class="session-item">
+                    <div class="session-name">Przegląd dokumentów</div>
+                    <div class="session-date">10 cze 2025, 09:20</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="glass-container">
         <!-- Header -->
         <div class="glass-header">
@@ -821,7 +1047,7 @@
             }
         }
         
-        function addMessage(type, content) {
+        function addMessage(type, content, shouldScroll = true, shouldSave = true) {
             const messages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `glass-message ${type}`;
@@ -833,12 +1059,27 @@
                 
                 // Format agent responses
                 messageDiv.innerHTML = formatAgentResponse(content);
+                
+                // Zapisz odpowiedź agenta do sesji
+                if (shouldSave && type !== 'system') {
+                    saveMessageToSession('assistant', content);
+                }
+            } else if (type === 'user') {
+                messageDiv.textContent = content;
+                
+                // Zapisz wiadomość użytkownika do sesji
+                if (shouldSave) {
+                    saveMessageToSession('user', content);
+                }
             } else {
                 messageDiv.textContent = content;
             }
             
             messages.appendChild(messageDiv);
-            messages.scrollTop = messages.scrollHeight;
+            
+            if (shouldScroll) {
+                messages.scrollTop = messages.scrollHeight;
+            }
             
             return messageDiv;
         }
@@ -918,6 +1159,268 @@
             }
         }
         
+        // Sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+        
+        // Session management variables
+        let currentSessionId = null;
+        let sessions = [];
+        
+        // Session management functions
+        async function loadSessions() {
+            try {
+                console.log('🔄 Ładowanie sesji z:', window.location.origin + '/api/sessions');
+                console.log('🔄 Pełny URL:', window.location.href);
+                
+                const response = await fetch('/api/sessions');
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📦 Otrzymane dane:', data);
+                
+                if (data.success) {
+                    sessions = data.sessions;
+                    updateSessionsList();
+                    console.log('✅ Załadowano sesje:', sessions.length);
+                } else {
+                    console.error('❌ Błąd ładowania sesji:', data);
+                    showFallbackSessions();
+                }
+            } catch (error) {
+                console.error('❌ Błąd połączenia z API sesji:', error);
+                console.error('❌ Error type:', error.constructor.name);
+                console.error('❌ Error message:', error.message);
+                console.error('❌ URL:', window.location.href);
+                console.error('❌ Origin:', window.location.origin);
+                
+                // Pokaż komunikat o błędzie z więcej szczegółów
+                const activeSessions = document.getElementById('activeSessions');
+                activeSessions.innerHTML = `
+                    <div class="no-sessions">
+                        ❌ Błąd połączenia z API<br>
+                        <small>${error.message}</small><br>
+                        <small>Sprawdź konsolę (F12)</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateSessionsList() {
+            const activeSessions = document.getElementById('activeSessions');
+            const historySessions = document.getElementById('historySessions');
+            
+            // Wyczyść listy
+            activeSessions.innerHTML = '';
+            historySessions.innerHTML = '';
+            
+            if (sessions.length === 0) {
+                activeSessions.innerHTML = '<div class="no-sessions">Brak sesji</div>';
+                return;
+            }
+            
+            // Podziel sesje na aktywne (ostatnie 3) i historyczne
+            const recentSessions = sessions.slice(0, 3);
+            const olderSessions = sessions.slice(3);
+            
+            // Dodaj aktywne sesje
+            recentSessions.forEach(session => {
+                const sessionElement = createSessionElement(session, true);
+                activeSessions.appendChild(sessionElement);
+            });
+            
+            // Dodaj historyczne sesje
+            olderSessions.forEach(session => {
+                const sessionElement = createSessionElement(session, false);
+                historySessions.appendChild(sessionElement);
+            });
+        }
+        
+        function createSessionElement(session, isActive) {
+            const div = document.createElement('div');
+            div.className = `session-item ${currentSessionId === session.id ? 'active' : ''}`;
+            div.onclick = () => switchToSession(session.id);
+            
+            const date = new Date(session.updated_at).toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            div.innerHTML = `
+                <div class="session-name">${session.title}</div>
+                <div class="session-date">${date} (${session.message_count} wiadomości)</div>
+            `;
+            
+            return div;
+        }
+        
+        function showFallbackSessions() {
+            // Komunikat o błędzie API
+            const activeSessions = document.getElementById('activeSessions');
+            activeSessions.innerHTML = `
+                <div class="no-sessions">
+                    ⚠️ Session API niedostępne<br>
+                    <small>Sprawdź czy serwer działa na porcie 8000</small>
+                </div>
+            `;
+        }
+        
+        async function createNewSession() {
+            try {
+                const response = await fetch('/api/sessions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: 'Nowa Rozmowa',
+                        user_id: 'default_user'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Utworzono nową sesję:', data.session_id);
+                    
+                    // Wyczyść obecny chat
+                    clearCurrentChat();
+                    currentSessionId = data.session_id;
+                    
+                    // Odśwież listę sesji
+                    await loadSessions();
+                    
+                    addMessage('system', `🆕 Rozpoczęto nową sesję: "${data.title}"`);
+                    closeSidebar();
+                } else {
+                    console.error('❌ Błąd tworzenia sesji:', data);
+                    addMessage('system', '❌ Nie można utworzyć nowej sesji');
+                }
+            } catch (error) {
+                console.error('❌ Błąd połączenia z API:', error);
+                addMessage('system', '❌ Błąd połączenia z Session API');
+            }
+        }
+        
+        async function switchToSession(sessionId) {
+            if (sessionId === currentSessionId) {
+                closeSidebar();
+                return;
+            }
+            
+            try {
+                // Pobierz historię wiadomości z sesji
+                const response = await fetch(`/api/sessions/${sessionId}/messages`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('✅ Załadowano sesję:', sessionId);
+                    
+                    // Wyczyść obecny chat
+                    clearCurrentChat();
+                    currentSessionId = sessionId;
+                    
+                    // Załaduj historię wiadomości
+                    loadSessionHistory(data.messages);
+                    
+                    // Aktualizuj aktywną sesję w sidebarze
+                    updateActiveSession(sessionId);
+                    
+                    addMessage('system', `📂 Załadowano sesję z ${data.messages.length} wiadomościami. Możesz kontynuować rozmowę!`);
+                    closeSidebar();
+                } else {
+                    console.error('❌ Błąd ładowania sesji:', data);
+                    addMessage('system', '❌ Nie można załadować sesji');
+                }
+            } catch (error) {
+                console.error('❌ Błąd połączenia z API:', error);
+                addMessage('system', '❌ Błąd połączenia z Session API');
+            }
+        }
+        
+        function clearCurrentChat() {
+            const messages = document.getElementById('chatMessages');
+            messages.innerHTML = '';
+        }
+        
+        function loadSessionHistory(messages) {
+            messages.forEach(message => {
+                const messageType = message.role === 'user' ? 'user' : 'agent';
+                addMessage(messageType, message.content, false, false); // false = nie scrolluj, nie zapisuj
+            });
+            
+            // Scrolluj na dół po załadowaniu wszystkich wiadomości
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function updateActiveSession(sessionId) {
+            // Usuń aktywną klasę ze wszystkich sesji
+            document.querySelectorAll('.session-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Znajdź i oznacz aktywną sesję
+            const sessionElements = document.querySelectorAll('.session-item');
+            sessionElements.forEach(element => {
+                if (element.onclick && element.onclick.toString().includes(sessionId)) {
+                    element.classList.add('active');
+                }
+            });
+        }
+        
+        // Funkcja do zapisywania wiadomości do bieżącej sesji
+        async function saveMessageToSession(role, content) {
+            if (!currentSessionId) {
+                // Jeśli nie ma aktywnej sesji, utwórz nową
+                await createNewSession();
+            }
+            
+            try {
+                const response = await fetch(`/api/sessions/${currentSessionId}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: role,
+                        content: content,
+                        metadata: {
+                            timestamp: new Date().toISOString(),
+                            agent: 'GoogleADKBusinessAgent'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('❌ Błąd zapisywania wiadomości:', data);
+                }
+            } catch (error) {
+                console.error('❌ Błąd zapisywania wiadomości:', error);
+            }
+        }
+
         // Auto-focus input when connected
         document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('messageInput');
@@ -929,6 +1432,9 @@
             input.addEventListener('blur', function() {
                 this.style.background = 'rgba(255, 255, 255, 0.1)';
             });
+            
+            // Load sessions on page load
+            loadSessions();
         });
     </script>
 </body>
